@@ -1,0 +1,1 @@
+window.MY_FLIGHT_SEED={"schema":1,"profile":{"staff":"","name":"","rank":"First Officer","month":"2026-11-01","base":0,"sectorRate":0,"hourRate":0},"flights":[],"routes":[],"history":[],"archive":[],"vacation":{},"vacRaw":[],"vacHeaders":[]};
