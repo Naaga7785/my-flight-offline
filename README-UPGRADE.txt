@@ -1,11 +1,15 @@
-MY FLIGHT OFFLINE 2.0 PRODUCTION UPGRADE
+MY FLIGHT — Salary Payment Cycle Update (28 October 2026)
 
-Target repository ONLY: Naaga7785/my-flight-offline
-DO NOT upload to my-flight-offline-test.
-Upload the EIGHT app files in this ZIP (not this README) to the ROOT of the production GitHub repository, replacing files with matching names. Keep the verified 1.0 JSON backup in iPad Files, never in public GitHub.
+Upload index.html, offline.js and sw.js to the ROOT of your existing production GitHub repository (my-flight-offline), replacing the current files. Keep the remaining files unchanged.
 
-DATA: This production build deliberately keeps IndexedDB database name my-flight-offline-v1 and version 1 to preserve existing stored data. It does NOT start with fresh sample data if saved data exists. No automatic restore should be done after deployment.
+BEFORE UPDATING: Export Backup All Data to iPad Files and keep a second copy. Never upload private backup data to public GitHub.
 
-CACHE: Service worker uses a production-specific cache namespace and deletes ONLY obsolete production-specific caches. It does not delete legacy v1 or test caches. Fetch caching is limited to its production scope.
+The IndexedDB name and schema are unchanged: existing data is not erased or migrated.
 
-NOTE: The test and production paths historically shared the same origin-level IndexedDB database. Do not make changes in the test app after production upgrade. Verify existing flight log, vacation, fixed-block data and backups in production before editing anything. The Excel comparison baseline is path-specific in localStorage, so re-register the ORIGINAL company Excel as baseline later; do not import it as new revisions.
+Payment month is one month AFTER the 26th–25th cycle: December 2026 payment includes 26 Oct – 25 Nov 2026, Saigon UTC+7. Flight date and departure/arrival time are UTC; cycle is selected by departure timestamp in Saigon time.
+
+Existing selected reporting month is treated as PAYMENT month; if it currently says 11/2026 and you want the 26 Oct – 25 Nov cycle, select 12/2026 then Save Profile & Rates.
+
+IMPORTANT: Existing old-style archived flight snapshots cannot safely be automatically relabeled; these remain as originally saved. New archives use payment months. Do not restore or delete the Home Screen app or clear website data.
+
+After upload, open the app online once, close it completely and reopen; then verify updated header and salary-cycle label.
