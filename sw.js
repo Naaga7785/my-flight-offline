@@ -1,6 +1,6 @@
 /* MY FLIGHT 2.0 production offline cache; preserves legacy and test caches. */
-const CACHE='my-flight-production-v2-quickentry-20261028';
-const ASSETS=['./','./index.html','./seed.js','./offline.js','./excel-import.js','./jszip.min.js','./manifest.webmanifest','./icon.svg'];
+const CACHE='my-flight-production-v5-advanced-test-20261030';
+const ASSETS=['./','./index.html','./seed.js','./offline.js','./duty.js','./advanced.js','./excel-import.js','./jszip.min.js','./manifest.webmanifest','./icon.svg'];
 const scope=new URL(self.registration.scope);
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([
