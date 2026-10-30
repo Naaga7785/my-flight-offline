@@ -17,6 +17,39 @@
 #dutyResult:empty::before{content:'Select a duty or enter reporting details to view its assessment.';color:#62728a}
 @media(max-width:900px){.advanced-card .grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.duty-report-card .grid,.advanced-card .grid{grid-template-columns:minmax(0,1fr)}.grid label,.grid2 label{min-height:0}.rolling-card .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Unified iPad-first layout revision — 31 October 2026 */
+:root{--mf-gap:16px;--mf-control:50px}
+.wrap{max-width:1220px;padding:16px}
+header{padding:20px 24px;margin-bottom:12px}
+header h1{line-height:1.2;letter-spacing:.1px}
+.tabs{gap:8px;padding:8px 0 10px}
+.tabs button{min-height:48px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25;padding:10px 8px}
+.card{padding:20px;margin-bottom:14px}
+.card h2{margin:0 0 16px;line-height:1.35}
+.card .hint{margin:0 0 18px}
+.grid,.grid2,.duty-report-card .grid,.advanced-card .grid{column-gap:var(--mf-gap);row-gap:18px;align-items:start}
+.grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.duty-report-card .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.advanced-card .grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid>div,.grid2>div{min-width:0;max-width:100%;display:flex;flex-direction:column;align-self:stretch}
+.grid label,.grid2 label{display:flex;align-items:flex-end;min-height:32px;margin:0 0 8px;line-height:1.35;overflow-wrap:anywhere}
+.grid input,.grid select,.grid2 input,.grid2 select{height:var(--mf-control);min-height:var(--mf-control);width:100%;max-width:100%;min-width:0}
+input[type=date]{font-size:16px;min-width:0;overflow:hidden}
+input[type=date]::-webkit-date-and-time-value{text-align:left;min-height:1em}
+.flight-entry-card .date-entry{width:100%;height:var(--mf-control);gap:0;min-width:0}
+.flight-entry-card .date-entry input{flex:1 1 auto;min-width:0;width:1%;height:var(--mf-control);border-radius:9px 0 0 9px;border-right:0}
+.flight-entry-card .date-entry button{flex:0 0 48px;width:48px;min-width:48px;height:var(--mf-control);padding:0;border-radius:0 9px 9px 0}
+.advanced-card .grid>div[hidden],.advanced-card .grid>div:has(>input:disabled),.advanced-card .grid>div:has(>select:disabled){display:none!important}
+.rolling-card .metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rolling-card .metrics>.metric:last-child:nth-child(odd){grid-column:1/-1}
+.metric{min-width:0;min-height:82px;display:flex;flex-direction:column;justify-content:center}
+.actions{gap:10px;margin-top:16px}.actions button{min-height:46px}
+.duty-flight{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 12px;line-height:1.4}
+.duty-flight input[type=checkbox]{flex:0 0 20px;width:20px;height:20px;min-height:20px;margin:0}
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.advanced-card .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.duty-report-card .grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.wrap{padding:10px}.card{padding:15px}.tabs{gap:5px}.tabs button{font-size:11px;min-height:46px;padding:8px 4px}.grid,.grid2,.advanced-card .grid,.duty-report-card .grid{grid-template-columns:minmax(0,1fr)}.grid label,.grid2 label{min-height:0}.rolling-card .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.metric strong{font-size:19px}}
 </style></head><body><div id="mainView" class="wrap"><header><h1>✈ MY FLIGHT</h1></header><div class="tabs"><button onclick="tab(0)">✈ Flight Log</button><button onclick="tab(1)">▤ Fixed Block</button><button onclick="tab(2)">▦ Vacation</button><button onclick="tab(3)">◷ FDP</button><button onclick="tab(4)">▣ Backup</button></div><div id="status" class="notice hidden"></div>
 <section class="tab active"><div class="card"><h2>Pilot Information</h2><div class="grid"><div><label>Staff number</label><input id="staff"></div><div><label>Full name</label><input id="name"></div><div><label>Designation</label><select id="rank"><option>First Officer</option><option>Captain</option></select></div><div><label>Salary payment month (MM/YYYY)</label><input id="month" inputmode="numeric" placeholder="MM/YYYY" maxlength="7"></div></div><div class="actions"><button class="alt" onclick="saveProfileUI()">Save Profile & Rates</button></div></div>
 <div class="card duty-report-card"><h2>Duty Reporting · Local Time</h2><p class="hint">Enter once per duty. This will be used by the FDP Calculator; flight departure and arrival remain UTC.</p><div class="grid"><div><label>Duty date (local)</label><input type="date" id="logDutyDate"></div><div><label>Reporting time (HHMM)</label><input id="logDutyReport" inputmode="numeric" placeholder="0530"></div><div><label>Reporting airport</label><input id="logDutyAirport" value="SGN" maxlength="3"></div></div><div class="actions"><button type="button" onclick="dutySaveReport()">Save Duty Reporting</button></div></div><div class="card flight-entry-card"><h2>Add Flight</h2><div class="grid"><div><label>Departure date (UTC)</label><div class="date-entry"><input id="date" placeholder="DD/MM/YYYY" readonly onclick="openCalendar('date')" aria-label="Departure date UTC"><button type="button" onclick="openCalendar('date')" aria-label="Choose departure date UTC">▦</button></div></div><div><label>FROM</label><input id="fr" maxlength="3" autocapitalize="characters" autocomplete="off" placeholder="SGN"></div><div><label>TO</label><input id="to" maxlength="3" autocapitalize="characters" autocomplete="off" placeholder="HAN"></div><div><label>DEP UTC</label><input id="dep" inputmode="numeric" autocomplete="off" placeholder="HH:MM"></div><div><label>ARR UTC</label><input id="arr" inputmode="numeric" autocomplete="off" placeholder="HH:MM"></div><div><label>ARR +days</label><select id="extra"><option value="0">0 (same UTC date)</option><option value="1">1 (next UTC date)</option><option value="2">2</option></select></div></div><div class="quick-line"><button class="alt" type="button" onclick="changeFlightDay(-1)">← Previous UTC day</button><button class="alt" type="button" onclick="changeFlightDay(1)">Next UTC day →</button><button class="alt" type="button" onclick="swapAirports()">⇄ Swap FROM / TO</button></div><p class="hint">Enter UTC departure date and off-block/on-block times. Typing 0900 becomes 09:00. Salary cycle is determined by departure time in Saigon (UTC+7).</p><div class="actions"><button onclick="saveFlightUI()">+ Add Sector</button></div></div>
