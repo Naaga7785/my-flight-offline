@@ -8,4 +8,9 @@ MY FLIGHT consolidated corrections - 31 Oct 2026
 - Offline cache version bumped; existing device data is preserved.
 - All existing vacation, FDP, backup, reset, and company import features retained.
 
-Final UI pass (31 Oct 2026): Show arrival +day badge in live and archived flight logs, including overnight UTC rollover; integrate calendar trigger into date field; bump offline cache version. Existing flight, FDP, salary, archive, Excel, vacation and backup logic preserved.
+Final consolidation:
+- Preserve overnight arrival day offsets in archived salary-cycle records.
+- Display arrival +day badge in flight log and PDF reports.
+- Reject invalid arrival-day values and same-airport flights on new entry.
+- Bump offline cache without changing IndexedDB name/schema or deleting flight data.
+- Advanced FDP scenario output remains advisory and requires operational verification.
