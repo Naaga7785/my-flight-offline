@@ -35,6 +35,23 @@ case 'saveProfile':{const p=args[0];if(!/^(0[1-9]|1[0-2])\/\d{4}$/.test(p.month)
 case 'saveFlight':{const f=args[0],p=cache.profile;checkDate(f.date);if(!inSalaryCycle(f,p.month))throw Error('Departure UTC falls outside the selected salary payment cycle (Saigon UTC+7).');if(!/^[A-Z]{3}$/.test(clean(f.fr))||!/^[A-Z]{3}$/.test(clean(f.to)))throw Error('Use three-letter airport codes');let duration=mins(f.arr)-mins(f.dep)+(+f.extra)*1440;if(+f.extra===0&&duration<0)duration+=1440;if(duration<=0||duration>1440)throw Error('Check UTC times and arrival day');if(cache.flights.length>=101)throw Error('Flight log full');cache.flights.push({...f,fr:clean(f.fr),to:clean(f.to),dep:hm(mins(f.dep)),arr:hm(mins(f.arr)),extra:+f.extra});save=true;out=state();break}
 case 'deleteFlight':{const i=Number(args[0]),monthly=currentSalaryFlights();if(!Number.isInteger(i)||!monthly[i])throw Error('Flight not found');cache.flights.splice(monthly[i]._index,1);save=true;out=state();break}
 case 'editFlight':{const i=Number(args[0]),patch=args[1],monthly=currentSalaryFlights();if(!Number.isInteger(i)||!monthly[i])throw Error('Flight not found');if(!Number.isInteger(patch.extra)||patch.extra<0||patch.extra>2)throw Error('Arrival days must be 0–2');let duration=mins(patch.arr)-mins(patch.dep)+patch.extra*1440;if(patch.extra===0&&duration<0)duration+=1440;if(duration<=0||duration>1440)throw Error('Invalid flight duration');Object.assign(cache.flights[monthly[i]._index],{dep:hm(mins(patch.dep)),arr:hm(mins(patch.arr)),extra:patch.extra});save=true;out=state();break}
+case 'initialRoutesStatus':return {routes:cache.routes.length,history:cache.history.length};
+case 'importInitialRoutes':{
+ const [rows,effective]=args;checkDate(effective);
+ if(!Array.isArray(rows)||rows.length<50||rows.length>5000)throw Error('Invalid initial route set');
+ if(cache.routes.length||cache.history.length)throw Error('Fixed Block already contains routes or history. Initial import is only allowed on an empty database.');
+ const seen=new Set();
+ for(const r of rows){if(!/^[A-Z]{3}$/.test(r.fr)||!/^[A-Z]{3}$/.test(r.to)||r.fr===r.to||!Number.isInteger(r.min)||r.min<20||r.min>900)throw Error('Invalid initial route');const k=r.fr+'|'+r.to;if(seen.has(k))throw Error('Duplicate initial route: '+k);seen.add(k)}
+ const old=clone(cache);
+ try{
+  cache.routes=rows.map(r=>({fr:r.fr,to:r.to,min:r.min,source:'Company initial import'}));
+  cache.history=rows.map((r,i)=>({fr:r.fr,to:r.to,min:r.min,date:effective,source:'Company initial import',order:i+1}));
+  await writeDB(cache);
+  const verify=await readDB();
+  if(verify.routes.length!==rows.length||verify.history.length!==rows.length)throw Error('Initial route import verification failed');
+ }catch(e){cache=old;try{await writeDB(old)}catch{}throw e}
+ return {count:rows.length,history:cache.history.length};
+}
 case 'importRoutes':{const [rows,effective]=args;checkDate(effective);if(!Array.isArray(rows)||!rows.length||rows.length>5000)throw Error('Invalid routes');const seen=new Set();for(const r of rows){if(!/^[A-Z]{3}$/.test(r.fr)||!/^[A-Z]{3}$/.test(r.to)||!Number.isInteger(r.min)||r.min<=0||r.min>1440)throw Error('Invalid route row');const k=r.fr+'|'+r.to;if(seen.has(k))throw Error('Duplicate route: '+k);seen.add(k)}const old=clone(cache);try{for(const r of rows){cache.routes=cache.routes.filter(x=>x.fr!==r.fr||x.to!==r.to);cache.routes.push({...r,source:'Excel import'});cache.history.push({...r,date:effective,source:'Excel import',order:cache.history.length+1001})}await writeDB(cache)}catch(e){cache=old;throw e}return {count:rows.length}}
 case 'importVacation':{const [staff,days,name]=args;if(!/^\d+$/.test(staff)||!Array.isArray(days)||!days.length||days.length>400)throw Error('Invalid vacation data');days.forEach(checkDate);const unique=[...new Set(days)].sort();const old=clone(cache);try{const headers=[...cache.vacHeaders];const indices=unique.map(d=>{let i=headers.indexOf(d);if(i<0){i=headers.length;headers.push(d)}return i});cache.vacHeaders=headers;cache.vacRaw=cache.vacRaw.filter(r=>r.staff!==staff);cache.vacRaw.push({staff,name:name||cache.profile.name,days:indices});delete cache.vacation[staff];await writeDB(cache)}catch(e){cache=old;throw e}return {count:unique.length}}
 case 'searchRoutes':{const [fr,to,asOf]=args;if(asOf)checkDate(asOf);const lookupDate=asOf||iso(),keys=new Set(cache.routes.map(x=>x.fr+'|'+x.to).concat(cache.history.map(x=>x.fr+'|'+x.to)));return [...keys].filter(k=>k.split('|')[0].includes(clean(fr))&&k.split('|')[1].includes(clean(to))).map(k=>{const [f,t]=k.split('|'),r=atRoute(f,t,lookupDate);return r?{fr:f,to:t,min:r.min,source:r.source}:null}).filter(Boolean).sort((a,b)=>(a.fr+a.to).localeCompare(b.fr+b.to)).slice(0,100)}
@@ -80,14 +97,35 @@ function buildReportPdf(html){
  let out='%PDF-1.4\n';const offsets=[0];for(let i=1;i<objects.length;i++){offsets[i]=out.length;out+=i+' 0 obj\n'+objects[i]+'\nendobj\n'}const xref=out.length;out+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';for(let i=1;i<objects.length;i++)out+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';out+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';return new Blob([out],{type:'application/pdf'});
 }
 function saveCurrentReportPdf(){try{if(!activeReportHtml)throw Error('Open a report first');const title=new DOMParser().parseFromString(activeReportHtml,'text/html').querySelector('h1')?.textContent||'REPORT';const filename='MY_FLIGHT_'+title.replace(/[^A-Za-z0-9]+/g,'_')+'_'+iso()+'.pdf';const url=URL.createObjectURL(buildReportPdf(activeReportHtml));const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);show('PDF created. Check Downloads or Files to keep a copy.')}catch(e){show('PDF save failed: '+e.message,true)}}
-/* Explicit destructive reset: clear every app record and company import baseline. */
+/* Full destructive reset. Clear the entire app object store (not just its
+   primary data key), re-seed, then independently verify persisted contents. */
 async function resetAllMyFlightData(){
  if(!db || !cache)throw Error('Database is not ready');
  const fresh=clone(window.MY_FLIGHT_SEED);
- if(!fresh || !Array.isArray(fresh.flights) || !Array.isArray(fresh.history))throw Error('Clean app template unavailable');
- await writeDB(fresh);
- localStorage.removeItem('my-flight-company-baseline-v1:'+location.pathname.replace(/[^a-z0-9/_-]/gi,''));
- cache=clone(fresh);
+ if(!fresh || !Array.isArray(fresh.flights) || !Array.isArray(fresh.history) ||
+    !Array.isArray(fresh.routes) || !Array.isArray(fresh.archive))
+   throw Error('Clean app template unavailable');
+ await new Promise((resolve,reject)=>{
+   const tx=db.transaction('store','readwrite');
+   const store=tx.objectStore('store');
+   store.clear();
+   store.put(fresh,'data');
+   tx.oncomplete=resolve;
+   tx.onerror=()=>reject(tx.error||Error('Reset transaction failed'));
+   tx.onabort=()=>reject(tx.error||Error('Reset transaction aborted'));
+ });
+ // The workbook comparison snapshot lives outside IndexedDB.
+ for(let i=localStorage.length-1;i>=0;i--){
+   const key=localStorage.key(i);
+   if(key && key.startsWith('my-flight-company-baseline-v1:'))localStorage.removeItem(key);
+ }
+ const saved=await readDB();
+ const empty=['flights','routes','history','archive','vacRaw','vacHeaders'];
+ if(!saved || empty.some(k=>!Array.isArray(saved[k])||saved[k].length!==0) ||
+    !saved.vacation || Object.keys(saved.vacation).length!==0 ||
+    (saved.profile && (saved.profile.staff||saved.profile.name)))
+   throw Error('Reset verification failed: saved records remain');
+ cache=clone(saved);
  return true;
 }
 async function bootOffline(){await openDB();cache=await readDB();if(!cache){cache=clone(window.MY_FLIGHT_SEED);await writeDB(cache)}render(state());loadArchiveMonths();set('vacstaff',cache.profile.staff);vacation(true);if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{})}

@@ -80,7 +80,7 @@ function showExcelSheet(){
  const kind=document.getElementById('excelKind').value,area=document.getElementById('excelSheetArea'),s=window.excelSheets[Number(document.getElementById('excelSheet').value)];
  excelRows=s.rows;const n=Math.max(3,...s.rows.slice(0,50).map(r=>r.length));
  let controls='';
- if(kind==='routes')controls=`<p>All worksheets and side-by-side route tables are scanned. Changes are compared with the previous company WORKBOOK, not manual route revisions.</p><p id="excelBaselineStatus">${baselineBanner()}</p><button type="button" onclick="registerCompanyBaseline()">Register selected workbook as baseline (no route changes)</button><label>Company effective date <input id="exEffective" type="date"></label>`;
+ if(kind==='routes')controls=`<p>All worksheets and side-by-side route tables are scanned. Changes are compared with the previous company WORKBOOK, not manual route revisions.</p><p id="excelBaselineStatus">${baselineBanner()}</p><button type="button" onclick="registerCompanyBaseline()">Register selected workbook as baseline (no route changes)</button><div class="actions" style="margin:12px 0"><button type="button" onclick="previewInitialRouteImport()">Import Initial Fixed Block Database</button></div><div id="initialRoutePreview"></div><label>Company effective date <input id="exEffective" type="date"></label>`;
  else controls=`<p>The app finds your staff ID automatically on the VAC Data worksheet and reads VAC-marked dates.</p><label>Schedule starting year<input id="exStartYear" type="number" min="2020" max="2100" value="${new Date().getFullYear()}"></label>`;
  area.innerHTML=`<div>${controls}</div><p><b>Worksheet sample (read-only)</b></p><div class="scroll"><table><tbody>${s.rows.slice(0,6).map(r=>'<tr>'+Array.from({length:Math.min(n,12)},(_,i)=>`<td>${h(r[i]??'')}</td>`).join('')+'</tr>').join('')}</tbody></table></div><div class="actions"><button onclick="validateExcelImport()">Validate & Compare</button></div><div id="exValidation"></div>`;
 }
@@ -98,6 +98,40 @@ function registerCompanyBaseline(){
   document.getElementById('excelBaselineStatus').innerHTML=baselineBanner();
   out.textContent='Company workbook registered as comparison baseline. No route or flight data was changed. Now choose the updated test workbook and compare.';
  }catch(e){out.textContent='Baseline not saved: '+e.message}
+}
+async function previewInitialRouteImport(){
+ const out=document.getElementById('initialRoutePreview');out.textContent='Checking initial routes…';
+ try{
+  const base=storedCompanyBaseline();if(!base)throw Error('Register the original company workbook as baseline first.');
+  const date=document.getElementById('exEffective').value;
+  if(!/^\d{4}-\d\d-\d\d$/.test(date)||new Date(date+'T12:00:00Z').toISOString().slice(0,10)!==date)throw Error('Choose a valid company effective date first.');
+  const parsed=extractCompanyRoutes(window.excelSheets);
+  const snapshot=routeSnapshot(parsed);
+  if(JSON.stringify(snapshot)!==JSON.stringify(base.routes))throw Error('Selected workbook does not match the registered original baseline. Select the original workbook.');
+  const status=await localCall('initialRoutesStatus',[]);
+  if(status.routes||status.history)throw Error('Existing fixed-block data or history detected ('+status.routes+' routes, '+status.history+' history records). Initial import is disabled to prevent duplicates.');
+  const rows=parsed.rows;
+  if(rows.length<50)throw Error('Too few valid routes detected.');
+  window.initialRoutePending={rows,date,signature:JSON.stringify(snapshot)};
+  out.innerHTML='<p><b>Initial import preview:</b> '+rows.length+' unambiguous routes will be loaded effective '+h(date)+'. '+parsed.issues.length+' ambiguous routes will be skipped for manual review. No existing flights, salary, vacation or FDP records will be changed. The company comparison baseline will be preserved.</p><button type="button" onclick="confirmInitialRouteImport()">Confirm Initial Database Import</button>';
+ }catch(e){window.initialRoutePending=null;out.textContent='Initial import stopped: '+e.message}
+}
+async function confirmInitialRouteImport(){
+ const p=window.initialRoutePending,out=document.getElementById('initialRoutePreview');
+ if(!p){out.textContent='Preview the initial import first.';return}
+ try{
+  const base=storedCompanyBaseline();if(!base||JSON.stringify(base.routes)!==p.signature)throw Error('Baseline changed. Preview again.');
+  const parsed=extractCompanyRoutes(window.excelSheets);
+  if(JSON.stringify(routeSnapshot(parsed))!==p.signature)throw Error('Workbook changed. Preview again.');
+  const date=document.getElementById('exEffective').value;
+  if(date!==p.date)throw Error('Effective date changed. Preview again.');
+  if(!confirm('Import '+p.rows.length+' initial fixed-block routes effective '+p.date+'? Ambiguous routes will remain unimported. This can only run on an empty Fixed Block database.'))return;
+  const result=await localCall('importInitialRoutes',[p.rows,p.date]);
+  window.initialRoutePending=null;
+  out.textContent='Initial import verified: '+result.count+' routes and '+result.history+' dated history entries saved. Ambiguous routes remain excluded. Baseline unchanged.';
+  show('Initial Fixed Block database imported: '+result.count+' routes.');
+  call('getState',[],s=>render(s),true);
+ }catch(e){out.textContent='Initial import failed: '+e.message;show(e.message,true)}
 }
 function validateExcelImport(){
  const out=document.getElementById('exValidation'),kind=document.getElementById('excelKind').value;window.excelPending=null;
