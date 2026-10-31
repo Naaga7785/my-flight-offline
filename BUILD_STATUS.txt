@@ -1,0 +1,2 @@
+MY FLIGHT — CORRECTED SOFTWARE TEST CANDIDATE
+Code-level fixes applied 30 October 2026. JavaScript syntax passed. Browser integration and full OM-A legality validation not completed. NOT operationally validated.
