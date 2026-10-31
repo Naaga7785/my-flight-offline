@@ -1,6 +1,6 @@
 /* MY FLIGHT 2.0 production offline cache; preserves legacy and test caches. */
-const CACHE='my-flight-production-v17-fdp-guardrails-20261031';
-const ASSETS=['./','./index.html','./seed.js','./offline.js','./duty.js','./advanced.js','./excel-import.js','./jszip.min.js','./manifest.webmanifest','./icon.svg'];
+const CACHE='my-flight-production-v16-company-module-checks-20261031';
+const ASSETS=['./','./index.html','./seed.js','./offline.js','./duty.js','./advanced.js','./basic_fdp_company.js','./unknown_acclim_company.js','./planned_extension_company.js','./augmented_crew_company.js','./delayed_reporting_company.js','./rest_recovery_company.js','./pic_discretion_company.js','./excel-import.js','./jszip.min.js','./manifest.webmanifest','./icon.svg'];
 const scope=new URL(self.registration.scope);
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([
