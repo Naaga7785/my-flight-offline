@@ -77,18 +77,29 @@ function swapAirports(){const fr=el('fr').value;set('fr',el('to').value);set('to
 function validDate(x){if(!/^\d{2}\/\d{2}\/\d{4}$/.test(x))return false;const d=new Date(toISO(x)+'T12:00:00Z');return !isNaN(d)&&d.toISOString().slice(0,10)===toISO(x)}
 function timeFormat(s){s=String(s||'').trim();if(/^\d{3,4}$/.test(s))s=s.slice(0,-2)+':'+s.slice(-2);const m=s.match(/^(\d{1,2}):(\d{2})$/);return m&&+m[1]<=23&&+m[2]<=59?m[1].padStart(2,'0')+':'+m[2]:s}
 ['dep','arr','mmin'].forEach(id=>{el(id).addEventListener('input',function(){if(/^\d{4}$/.test(this.value))this.value=timeFormat(this.value)});el(id).addEventListener('blur',function(){this.value=timeFormat(this.value)})});['fr','to','sfr','sto','mfr','mto'].forEach(id=>el(id).addEventListener('input',function(){this.value=this.value.toUpperCase().replace(/\s/g,'')}));
-function render(s,resetDate=false){currentState=s;const p=s.profile,t=s.totals;set('staff',p.staff);set('name',p.name);set('rank',p.rank);set('month',p.month.slice(5,7)+'/'+p.month.slice(0,4));set('base',p.base);set('sectorRate',p.sectorRate);set('hourRate',p.hourRate);if(resetDate||!el('date').value){const w=salaryWindow(p.month);set('date',formatDate(w.localStart))}const w=salaryWindow(p.month);el('cycleDates').textContent='Payment '+p.month.slice(5,7)+'/'+p.month.slice(0,4)+' · Qualifying departures: '+formatDate(w.localStart)+' – '+formatDate(w.localEnd)+' (Saigon UTC+7; boundaries applied to departure UTC time).';el('flights').innerHTML=s.flights.map(f=>`<tr><td>${formatDate(f.date)}</td><td>${f.fr}</td><td>${f.to}</td><td>${f.dep}</td><td>${f.arr}</td><td>${fmt(f.actual)}</td><td>${f.fixed==null?'⚠ Missing':fmt(f.fixed)}</td><td>${f.diff==null?'—':(f.diff>0?'+':'')+fmt(f.diff)}</td><td><button class="alt" onclick="editFlightUI(${s.flights.indexOf(f)})">Edit</button> <button class="alt" onclick="deleteFlightUI(${s.flights.indexOf(f)})">Delete</button></td></tr>`).join('');el('sectors').textContent=t.sectors;el('actualTotal').textContent=t.actual;el('fixedTotal').textContent=t.fixed;el('diffTotal').textContent=t.diffMinutes;el('baseOut').textContent=money(t.base);el('sectorPay').textContent=money(t.sectorPay);el('hourPay').textContent=money(t.hourPay);el('salary').textContent=money(t.total)}
+function render(s,resetDate=false){currentState=s;const p=s.profile,t=s.totals;set('staff',p.staff);set('name',p.name);set('rank',p.rank);set('month',p.month.slice(5,7)+'/'+p.month.slice(0,4));set('base',p.base);set('sectorRate',p.sectorRate);set('hourRate',p.hourRate);if(resetDate||!el('date').value){const w=salaryWindow(p.month);set('date',formatDate(w.localStart))}const w=salaryWindow(p.month);el('cycleDates').textContent='Payment '+p.month.slice(5,7)+'/'+p.month.slice(0,4)+' · Qualifying departures: '+formatDate(w.localStart)+' – '+formatDate(w.localEnd)+' (Saigon UTC+7; boundaries applied to departure UTC time).';el('flights').innerHTML=s.flights.map(f=>`<tr><td>${formatDate(f.date)}</td><td>${f.fr}</td><td>${f.to}</td><td>${f.dep}</td><td>${f.arr}</td><td>${fmt(f.actual)}</td><td>${f.fixed==null?'⚠ Missing':fmt(f.fixed)}</td><td>${f.diff==null?'—':(f.diff>0?'+':'')+fmt(f.diff)}</td><td><button class="alt" onclick="editFlightUI(${s.flights.indexOf(f)})">Edit</button> <button class="alt" onclick="deleteFlightUI(${s.flights.indexOf(f)})">Delete</button></td></tr>`).join('');el('sectors').textContent=t.sectors;el('actualTotal').textContent=t.actual;el('fixedTotal').textContent=t.fixed;el('diffTotal').textContent=t.diffMinutes==null?'—':t.diffMinutes;el('baseOut').textContent=money(t.base);el('sectorPay').textContent=money(t.sectorPay);el('hourPay').textContent=money(t.hourPay);el('salary').textContent=money(t.total)}
 function saveProfileUI(){const old=currentState?.profile?.month;call('saveProfile',[{staff:el('staff').value,name:el('name').value,rank:el('rank').value,base:el('base').value,sectorRate:el('sectorRate').value,hourRate:el('hourRate').value,month:el('month').value}],s=>{render(s,old!==s.profile.month);show('Profile saved')})}
 function saveFlightUI(){['dep','arr'].forEach(id=>set(id,timeFormat(el(id).value)));if(!validDate(el('date').value)||!['dep','arr'].every(id=>/^([01]\d|2[0-3]):[0-5]\d$/.test(el(id).value)))return show('Use DD/MM/YYYY and HH:MM for UTC times.',true);call('saveFlight',[{date:toISO(el('date').value),fr:el('fr').value,to:el('to').value,dep:el('dep').value,arr:el('arr').value,extra:el('extra').value}],s=>{const nextFrom=el('to').value.toUpperCase();render(s);['fr','to','dep','arr'].forEach(id=>set(id,''));set('fr',nextFrom);set('extra','0');el('to').focus();if(typeof dutyFlightOptions==='function')dutyFlightOptions();show('Sector saved · Next FROM suggested')})}
 function editFlightUI(i){
  const f=currentState?.flights?.[i];if(!f)return show('Flight not found. Refresh the log.',true);
- const dep=prompt('Edit departure UTC (HH:MM)',f.dep);if(dep===null)return;
- const arr=prompt('Edit arrival UTC (HH:MM)',f.arr);if(arr===null)return;
- const extra=prompt('Arrival day offset (0=same UTC date, 1=next day, 2=two days)',String(f.extra||0));if(extra===null)return;
- const d=timeFormat(dep),a=timeFormat(arr),n=Number(extra);
- if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(d)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(a)||!['0','1','2'].includes(extra.trim())||!Number.isInteger(n))return show('Use valid HH:MM times and arrival day 0, 1 or 2.',true);
- if(!confirm('Save corrected UTC times for '+f.fr+' → '+f.to+'?'))return;
- call('editFlight',[i,{dep:d,arr:a,extra:n}],s=>{render(s);show('Flight updated')});
+ const dateInput=prompt('Departure UTC date (DD/MM/YYYY)',formatDate(f.date));if(dateInput===null)return;
+ const date=parseInputDate(dateInput);if(!date)return show('Enter a valid date as DD/MM/YYYY.',true);
+ const fr=prompt('FROM airport (three letters)',f.fr);if(fr===null)return;
+ const to=prompt('TO airport (three letters)',f.to);if(to===null)return;
+ const dep=prompt('Departure UTC (HHMM or HH:MM)',f.dep);if(dep===null)return;
+ const arr=prompt('Arrival UTC (HHMM or HH:MM)',f.arr);if(arr===null)return;
+ const extra=prompt('Arrival +days (0, 1 or 2)',String(f.extra||0));if(extra===null)return;
+ const d=timeFormat(dep),a=timeFormat(arr),n=Number(extra),from=fr.trim().toUpperCase(),dest=to.trim().toUpperCase();
+ if(!/^[A-Z]{3}$/.test(from)||!/^[A-Z]{3}$/.test(dest)||from===dest||!/^([01]\d|2[0-3]):[0-5]\d$/.test(d)||!/^([01]\d|2[0-3]):[0-5]\d$/.test(a)||!['0','1','2'].includes(extra.trim()))return show('Check date, airports, UTC times and arrival offset.',true);
+ const moving=!inSalaryCycle({date,dep:d},currentState.profile.month);
+ const message='Save corrected flight '+dateInput+' '+from+' → '+dest+'?'+(moving?'\nThis flight will move out of the currently selected salary cycle. Select its payment month to view it.':'');
+ if(!confirm(message))return;
+ call('editFlight',[i,{date,fr:from,to:dest,dep:d,arr:a,extra:n}],s=>{render(s);show(moving?'Flight updated and moved to its correct salary cycle.':'Flight updated and totals recalculated.')});
+}
+function parseInputDate(value){
+ const m=String(value).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);if(!m)return null;
+ const iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+ try{checkDate(iso);return iso}catch{return null}
 }
 function deleteFlightUI(i){
  const f=currentState?.flights?.[i];if(!f)return show('Flight not found. Refresh the log.',true);

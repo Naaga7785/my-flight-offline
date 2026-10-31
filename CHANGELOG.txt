@@ -1,0 +1,9 @@
+MY FLIGHT consolidated corrections - 31 Oct 2026
+- Fixed Block as-of search now uses dated history only, with no fallback to a future rate.
+- Flight fixed-block lookup follows the same date rule.
+- Flight Edit now supports date, FROM, TO, departure, arrival, and arrival offset.
+- Editing a flight into another salary cycle preserves it and updates current-cycle totals.
+- Missing fixed block no longer displays a misleading numeric difference total.
+- Initial import date label warns against using an unverified effective date.
+- Offline cache version bumped; existing device data is preserved.
+- All existing vacation, FDP, backup, reset, and company import features retained.

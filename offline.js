@@ -8,7 +8,7 @@ const clean=s=>String(s||'').trim().toUpperCase(),iso=()=>new Date().toISOString
 const hm=n=>n==null?'—':(n<0?'-':'')+pad(Math.floor(Math.abs(Math.round(n))/60))+':'+pad(Math.abs(Math.round(n))%60);
 function mins(s){const m=String(s||'').match(/^(\d{1,2}):(\d{2})$/)||String(s||'').match(/^(\d{1,2})(\d{2})$/);if(!m||+m[1]>23||+m[2]>59)throw Error('Enter UTC time as 09:00');return +m[1]*60+(+m[2])}
 function checkDate(d){if(!/^\d{4}-\d\d-\d\d$/.test(d)||!Number.isFinite(Date.parse(d+'T12:00:00Z'))||new Date(d+'T12:00:00Z').toISOString().slice(0,10)!==d)throw Error('Invalid date')}
-function atRoute(fr,to,date){const matches=cache.history.filter(r=>r.fr===fr&&r.to===to&&r.date<=date).sort((a,b)=>a.date.localeCompare(b.date)||(a.order||0)-(b.order||0));return matches.at(-1)||cache.routes.find(r=>r.fr===fr&&r.to===to)||null}
+function atRoute(fr,to,date){const matches=cache.history.filter(r=>r.fr===fr&&r.to===to&&r.date<=date).sort((a,b)=>a.date.localeCompare(b.date)||(a.order||0)-(b.order||0));return matches.at(-1)||null}
 /* Pay month denotes the month money is received. The qualifying duty period
    starts on day 26 two calendar months earlier and ends before day 26 of the
    preceding calendar month, using fixed Ho Chi Minh City UTC+07:00 time. */
@@ -26,7 +26,7 @@ function departureUtcMs(f){checkDate(f.date);return Date.parse(f.date+'T00:00:00
 function inSalaryCycle(f,paymentMonth){const w=salaryWindow(paymentMonth),t=departureUtcMs(f);return t>=w.start&&t<w.end}
 function currentSalaryFlights(){return cache.flights.map((f,j)=>({...f,_index:j})).filter(f=>inSalaryCycle(f,cache.profile.month))}
 function nextPaymentMonth(paymentMonth){const m=salaryWindow(paymentMonth).paymentMonth;return new Date(Date.UTC(+m.slice(0,4),+m.slice(5,7),1)).toISOString().slice(0,7)+'-01'}
-function state(){const p=cache.profile,flights=cache.flights.filter(f=>inSalaryCycle(f,p.month)).map(f=>{const actual=mins(f.arr)-mins(f.dep)+(+f.extra)*1440+(+f.extra===0&&mins(f.arr)<mins(f.dep)?1440:0),r=atRoute(f.fr,f.to,f.date),fixed=r?r.min:null;return {...f,actual,fixed,diff:fixed==null?null:actual-fixed}}),actual=flights.reduce((a,f)=>a+f.actual,0),fixed=flights.reduce((a,f)=>a+(f.fixed||0),0);return {profile:clone(p),flights,totals:{sectors:flights.length,actual:hm(actual),fixed:hm(fixed),diffMinutes:actual-fixed,base:p.base,sectorPay:flights.length*p.sectorRate,hourPay:fixed*p.hourRate/60,total:p.base+flights.length*p.sectorRate+fixed*p.hourRate/60}}}
+function state(){const p=cache.profile,flights=cache.flights.filter(f=>inSalaryCycle(f,p.month)).map(f=>{const actual=mins(f.arr)-mins(f.dep)+(+f.extra)*1440+(+f.extra===0&&mins(f.arr)<mins(f.dep)?1440:0),r=atRoute(f.fr,f.to,f.date),fixed=r?r.min:null;return {...f,actual,fixed,diff:fixed==null?null:actual-fixed}}),actual=flights.reduce((a,f)=>a+f.actual,0),fixed=flights.reduce((a,f)=>a+(f.fixed||0),0);return {profile:clone(p),flights,totals:{sectors:flights.length,actual:hm(actual),fixed:hm(fixed),diffMinutes:flights.some(f=>f.fixed==null)?null:actual-fixed,base:p.base,sectorPay:flights.length*p.sectorRate,hourPay:fixed*p.hourRate/60,total:p.base+flights.length*p.sectorRate+fixed*p.hourRate/60}}}
 function archiveReport(month){const a=cache.archive.filter(x=>x.month===month);if(!a.length)throw Error('No archived flights for '+month);const salaries=[...new Set(a.map(x=>x.salary).filter(x=>x!=null))];if(salaries.length>1)throw Error('Conflicting saved salary snapshots');const flights=a.map(x=>({...x,diff:x.actual-x.fixed})),actual=a.reduce((n,f)=>n+f.actual,0),fixed=a.reduce((n,f)=>n+f.fixed,0);return {month,flights,totals:{sectors:a.length,actual:hm(actual),fixed:hm(fixed),diffMinutes:actual-fixed,salary:salaries[0]??null},profile:clone(cache.profile)}}
 function vac(staff){let rows=cache.vacation[staff],person=cache.vacRaw.find(r=>r.staff===staff),name=person?.name||cache.profile.name;if(!rows&&person){const days=person.days.map(i=>cache.vacHeaders[i]).filter(s=>/^\d{4}-\d\d-\d\d$/.test(s)).sort(),groups=[];for(const day of days){const last=groups.at(-1);if(last&&(Date.parse(day+'T12:00:00Z')-Date.parse(last.end+'T12:00:00Z'))===86400000){last.end=day;last.days++}else groups.push({start:day,end:day,days:1})}const fmt=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}),mon=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-GB',{month:'short',timeZone:'UTC'});rows=groups.map((g,i)=>({month:(mon(g.start)===mon(g.end)?mon(g.start):mon(g.start)+'/'+mon(g.end))+' '+g.end.slice(0,4),dates:fmt(g.start)+' – '+fmt(g.end),days:g.days,between:i?Math.round((Date.parse(g.start+'T12:00:00Z')-Date.parse(groups[i-1].end+'T12:00:00Z'))/86400000)-1:'—'}))}if(!rows?.length)throw Error('Vacation schedule unavailable for staff '+staff);return {staff,name,periods:rows,total:rows.reduce((a,x)=>a+x.days,0)}}
 async function localCall(fn,args=[]){let out,save=false;switch(fn){
@@ -34,7 +34,20 @@ case 'getState':return state();
 case 'saveProfile':{const p=args[0];if(!/^(0[1-9]|1[0-2])\/\d{4}$/.test(p.month))throw Error('Month must be MM/YYYY');const old=clone(cache.profile);cache.profile={staff:String(p.staff),name:p.name,rank:p.rank,month:p.month.slice(3)+'-'+p.month.slice(0,2)+'-01',base:+p.base,sectorRate:+p.sectorRate,hourRate:+p.hourRate};try{await writeDB(cache)}catch(e){cache.profile=old;throw e}return state()}
 case 'saveFlight':{const f=args[0],p=cache.profile;checkDate(f.date);if(!inSalaryCycle(f,p.month))throw Error('Departure UTC falls outside the selected salary payment cycle (Saigon UTC+7).');if(!/^[A-Z]{3}$/.test(clean(f.fr))||!/^[A-Z]{3}$/.test(clean(f.to)))throw Error('Use three-letter airport codes');let duration=mins(f.arr)-mins(f.dep)+(+f.extra)*1440;if(+f.extra===0&&duration<0)duration+=1440;if(duration<=0||duration>1440)throw Error('Check UTC times and arrival day');if(cache.flights.length>=101)throw Error('Flight log full');cache.flights.push({...f,fr:clean(f.fr),to:clean(f.to),dep:hm(mins(f.dep)),arr:hm(mins(f.arr)),extra:+f.extra});save=true;out=state();break}
 case 'deleteFlight':{const i=Number(args[0]),monthly=currentSalaryFlights();if(!Number.isInteger(i)||!monthly[i])throw Error('Flight not found');cache.flights.splice(monthly[i]._index,1);save=true;out=state();break}
-case 'editFlight':{const i=Number(args[0]),patch=args[1],monthly=currentSalaryFlights();if(!Number.isInteger(i)||!monthly[i])throw Error('Flight not found');if(!Number.isInteger(patch.extra)||patch.extra<0||patch.extra>2)throw Error('Arrival days must be 0–2');let duration=mins(patch.arr)-mins(patch.dep)+patch.extra*1440;if(patch.extra===0&&duration<0)duration+=1440;if(duration<=0||duration>1440)throw Error('Invalid flight duration');Object.assign(cache.flights[monthly[i]._index],{dep:hm(mins(patch.dep)),arr:hm(mins(patch.arr)),extra:patch.extra});save=true;out=state();break}
+case 'editFlight':{
+ const i=Number(args[0]),patch=args[1],monthly=currentSalaryFlights();
+ if(!Number.isInteger(i)||!monthly[i])throw Error('Flight not found');
+ const old=monthly[i],date=patch.date??old.date,fr=clean(patch.fr??old.fr),to=clean(patch.to??old.to);
+ checkDate(date);
+ if(!/^[A-Z]{3}$/.test(fr)||!/^[A-Z]{3}$/.test(to)||fr===to)throw Error('Use different three-letter FROM and TO airports');
+ if(!Number.isInteger(patch.extra)||patch.extra<0||patch.extra>2)throw Error('Arrival days must be 0–2');
+ const dep=hm(mins(patch.dep)),arr=hm(mins(patch.arr));
+ let duration=mins(arr)-mins(dep)+patch.extra*1440;
+ if(patch.extra===0&&duration<0)duration+=1440;
+ if(duration<=0||duration>1440)throw Error('Invalid flight duration');
+ Object.assign(cache.flights[old._index],{date,fr,to,dep,arr,extra:patch.extra});
+ save=true;out=state();break
+}
 case 'initialRoutesStatus':return {routes:cache.routes.length,history:cache.history.length};
 case 'importInitialRoutes':{
  const [rows,effective]=args;checkDate(effective);
