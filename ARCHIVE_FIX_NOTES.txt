@@ -1,0 +1,6 @@
+MY FLIGHT - Archive consistency patch
+- New archives save a snapshot of the pilot profile alongside every archived flight.
+- Archived reports use the saved profile rather than the currently edited profile.
+- Existing archived records without a profile snapshot remain compatible and retain their previously saved flight values and salary; their historical profile cannot be reconstructed.
+- Tested with Node VM: archived salary, fixed block, profile, later route revision, and JSON backup roundtrip.
+- No browser end-to-end testing was performed for this build.
