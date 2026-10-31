@@ -1,0 +1,8 @@
+31 October 2026 — Local verification
+PASS: JavaScript syntax: offline.js, advanced.js, duty.js, excel-import.js.
+PASS: 16 deterministic advanced FDP implemented-logic assertions (delay, PIC, standby, split duty, augmented, reserve).
+PASS: PDF resource mapping assertions (Helvetica and Helvetica-Bold) and summary/detail inclusion in source.
+FIXED: PDF detail cards page-break guard to avoid clipping when rows fill a page.
+BLOCKED: Browser automation navigation blocked by execution environment, including localhost and file URLs.
+NOT VERIFIED: downloaded PDF rendering on iPad Safari; full end-to-end regression; complete company manual conformance of advanced FDP.
+IMPORTANT: Advanced FDP results are advisory; not operational authorization.

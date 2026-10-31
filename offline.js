@@ -101,11 +101,11 @@ function buildReportPdf(html){
  const row=(r,isHead=false,index=0)=>{if(y<95){newPage();if(table.length&&!isHead)row(table[0],true)}const h=isHead?29:26;rect(m,y-h+7,usable,h,isHead?'0.10 0.22 0.41':index%2?'0.92 0.95 0.99':'1 1 1');let x=m;for(let i=0;i<r.length;i++){const w=usable*(cols[i]||.12),max=Math.max(3,Math.floor((w-10)/(isHead?5.3:5.0))),v=ascii(r[i]);txt(x+7,y-10,v.length>max?v.slice(0,max-1)+'~':v,isHead?9:9,isHead,isHead?'1 1 1':'0.09 0.18 0.32');x+=w}y-=h};
  newPage();if(table.length){row(table[0],true);table.slice(1).forEach((r,i)=>row(r,false,i))}y-=18;
  if(y<105)newPage();txt(m,y,summary,10,true);y-=29;
- if(details.length){const gap=9,w=(usable-gap*(details.length-1))/details.length;details.forEach((d,i)=>{const x=m+i*(w+gap);rect(x,y-45,w,52,'0.91 0.95 0.99');txt(x+9,y-15,d[0],9);txt(x+9,y-35,d[1],14,true)});y-=64}
+ if(details.length){if(y<95)newPage();const gap=9,w=(usable-gap*(details.length-1))/details.length;details.forEach((d,i)=>{const x=m+i*(w+gap);rect(x,y-45,w,52,'0.91 0.95 0.99');txt(x+9,y-15,d[0],9);txt(x+9,y-35,d[1],14,true)});y-=64}
  if(warning){if(y<65)newPage();rect(m,y-34,usable,42,'1 0.94 0.91');txt(m+10,y-12,warning.slice(0,112),10,true,'0.60 0.19 0.10');y-=48}
  pages.push(ops.join('\n'));
  const objects=['','<< /Type /Catalog /Pages 2 0 R >>','', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>'];
- const kids=[];for(const content of pages){const pageId=objects.length,streamId=pageId+1;kids.push(pageId+' 0 R');objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents '+streamId+' 0 R >>');objects.push('<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream')}
+ const kids=[];for(const content of pages){const pageId=objects.length,streamId=pageId+1;kids.push(pageId+' 0 R');objects.push('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+W+' '+H+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+streamId+' 0 R >>');objects.push('<< /Length '+content.length+' >>\nstream\n'+content+'\nendstream')}
  objects[2]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+pages.length+' >>';
  let out='%PDF-1.4\n';const offsets=[0];for(let i=1;i<objects.length;i++){offsets[i]=out.length;out+=i+' 0 obj\n'+objects[i]+'\nendobj\n'}const xref=out.length;out+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';for(let i=1;i<objects.length;i++)out+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';out+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';return new Blob([out],{type:'application/pdf'});
 }
