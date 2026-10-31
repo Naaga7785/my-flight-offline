@@ -1,0 +1,26 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const c=vm.createContext({document:{addEventListener(){}},console});vm.runInContext(fs.readFileSync(__dirname+'/advanced.js','utf8'),c);
+const test=(type,input,expect)=>{const x=vm.runInContext('advEngine('+JSON.stringify(type)+','+JSON.stringify(input)+')',c);assert.equal(x.result,expect,JSON.stringify(x));return x};
+let n=0;function check(type,input,expected){test(type,input,expected);n++}
+check('delay',{original:480,revised:540,notify:420},'REVIEW REQUIRED');
+check('delay',{original:480,revised:720,notify:420},'REVIEW REQUIRED');
+check('delay',{original:480,revised:1080,notify:420},'REVIEW REQUIRED');
+check('delay',{original:480,revised:540,notify:420,second:450},'LIMIT / MISSING CONDITION');
+check('delay',{original:null,revised:540,notify:420},'LIMIT / MISSING CONDITION');
+check('pic',{pic:121},'LIMIT / MISSING CONDITION');
+check('pic',{pic:60},'REVIEW REQUIRED');
+check('standbyAirport',{duration:780},'LIMIT / MISSING CONDITION');
+check('standbyAirport',{duration:330},'REVIEW REQUIRED');
+check('standbyOther',{duration:780},'LIMIT / MISSING CONDITION');
+check('standbyOther',{duration:450},'REVIEW REQUIRED');
+check('split',{duration:240,overlap:0,accommodation:'yes',reduced:'no'},'REVIEW REQUIRED');
+check('split',{duration:240,overlap:0,accommodation:'no',reduced:'no'},'LIMIT / MISSING CONDITION');
+check('split',{duration:240,overlap:0,accommodation:'yes',reduced:'yes'},'LIMIT / MISSING CONDITION');
+check('split',{duration:120,overlap:0,accommodation:'yes',reduced:'no'},'LIMIT / MISSING CONDITION');
+check('split',{duration:240,overlap:300,accommodation:'yes',reduced:'no'},'LIMIT / MISSING CONDITION');
+check('augmented',{crew:1,cls:1},'REVIEW REQUIRED');
+check('augmented',{crew:0,cls:1},'LIMIT / MISSING CONDITION');
+check('reserve',{duration:1500},'LIMIT / MISSING CONDITION');
+check('reserve',{duration:600},'REVIEW REQUIRED');
+const x=test('split',{duration:240,overlap:0,accommodation:'no',reduced:'no'},'LIMIT / MISSING CONDITION');assert.equal(x.computed.potentialExtension,undefined);n++;
+console.log('PASS '+n+' advanced FDP guardrail checks');

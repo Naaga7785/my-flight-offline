@@ -1,5 +1,8 @@
-MY FLIGHT PDF REPAIR
-Root cause: PDF page resources incorrectly mapped /F1 to object 4 (bold font) and /F2 to object 5 (a page object), so all bold text was invisible in the generated PDF. Corrected mappings /F1 3 and /F2 4. Offline cache bumped to v16.
-17 automated checks passed: 16 advanced FDP implemented-logic scenarios and 1 PDF font resource check. All JS syntax checks passed.
-NOT independently verified: Safari rendering of downloaded PDF, complete end-to-end browser regression, and legal/operational compliance of advanced FDP rules with company manual.
-Deployment: upload all files at ZIP root to existing GitHub Pages repository.
+MY FLIGHT — FDP conservative guardrail update
+Based on the deployed archive-consistency source snapshot.
+- Second delayed-report notification now explicitly blocks any implied first-notification result.
+- Split-duty potential extension is not shown unless the minimum break, accommodation, reduced-rest, and WOCL overlap conditions entered are internally consistent.
+- Clarified first-notification timing warning.
+- Updated offline cache version to force asset refresh.
+- 21 deterministic advanced FDP guardrail tests pass; JavaScript syntax checks pass.
+IMPORTANT: This is NOT a full company-manual compliance certification. Scenario outputs remain REVIEW REQUIRED, not legal clearance. In particular no automated clearance for second notifications, cumulative limits, rest and standby interactions, or augmented rest allocations.
