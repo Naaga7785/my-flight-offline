@@ -1,0 +1,6 @@
+MY FLIGHT — 31 OCT 2026
+Verified locally: generated a real PDF from the application's PDF writer and extracted its text using pdftotext. The report title, table headers, summary totals, four summary-card labels and values, and salary $3599.17 are present.
+Verified: JavaScript syntax checks on offline.js, advanced.js, duty.js and excel-import.js.
+Previously checked: 16 advanced-FDP implemented-logic assertions. These do not prove airline manual compliance.
+NOT verified: Safari PDF rendering, full end-to-end app regression, full company-manual FDP conformance.
+The attached verified_report.pdf is a synthetic test report, NOT user flight data.
