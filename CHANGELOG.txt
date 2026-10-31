@@ -7,3 +7,5 @@ MY FLIGHT consolidated corrections - 31 Oct 2026
 - Initial import date label warns against using an unverified effective date.
 - Offline cache version bumped; existing device data is preserved.
 - All existing vacation, FDP, backup, reset, and company import features retained.
+
+Final UI pass (31 Oct 2026): Show arrival +day badge in live and archived flight logs, including overnight UTC rollover; integrate calendar trigger into date field; bump offline cache version. Existing flight, FDP, salary, archive, Excel, vacation and backup logic preserved.
