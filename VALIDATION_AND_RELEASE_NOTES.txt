@@ -1,0 +1,29 @@
+MY FLIGHT — Consolidated corrections — 31 October 2026
+
+Included fixes
+- Remove header subtitle; FDP tab and section headings renamed.
+- FDP and advanced scenario fields use consistent label height and grid alignment.
+- Unused advanced scenario inputs are hidden rather than greyed out.
+- Advanced result is cleared when inputs or scenario change (prevents stale assessment).
+- Rolling totals use the selected FDP local calendar date (inclusive), not the device date.
+- 12-month flight window also uses the selected FDP calendar month.
+- Rolling display states its as-of date and the final metric spans both columns.
+- Saved duty changes and deletions refresh rolling metrics.
+- Service-worker cache version incremented for update delivery.
+
+Automated checks passed
+- JavaScript syntax: all app JS and inline script blocks.
+- Nine advanced scenario engine smoke tests.
+- Rolling windows: 7/14/28-day duty and 28-day/12-month flight calculations.
+- HHMM normalization, basic FDP band selection and duration formatting.
+- ZIP integrity.
+
+NOT independently verified
+- Full iPad Safari end-to-end interactions, actual company XLSX import samples,
+  backup/restore round trips, and every manual rule prerequisite.
+- Do not treat preliminary FDP calculations as an operational legality clearance.
+
+INSTALL
+Upload all files in this ZIP into the ROOT of the GitHub Pages repository,
+replacing files with the same names. Keep personal data safe by using the
+Backup tab before updating. After Pages deploys, close and reopen the PWA.
