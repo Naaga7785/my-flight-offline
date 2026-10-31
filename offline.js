@@ -80,4 +80,14 @@ function buildReportPdf(html){
  let out='%PDF-1.4\n';const offsets=[0];for(let i=1;i<objects.length;i++){offsets[i]=out.length;out+=i+' 0 obj\n'+objects[i]+'\nendobj\n'}const xref=out.length;out+='xref\n0 '+objects.length+'\n0000000000 65535 f \n';for(let i=1;i<objects.length;i++)out+=String(offsets[i]).padStart(10,'0')+' 00000 n \n';out+='trailer\n<< /Size '+objects.length+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF';return new Blob([out],{type:'application/pdf'});
 }
 function saveCurrentReportPdf(){try{if(!activeReportHtml)throw Error('Open a report first');const title=new DOMParser().parseFromString(activeReportHtml,'text/html').querySelector('h1')?.textContent||'REPORT';const filename='MY_FLIGHT_'+title.replace(/[^A-Za-z0-9]+/g,'_')+'_'+iso()+'.pdf';const url=URL.createObjectURL(buildReportPdf(activeReportHtml));const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);show('PDF created. Check Downloads or Files to keep a copy.')}catch(e){show('PDF save failed: '+e.message,true)}}
+/* Explicit destructive reset: clear every app record and company import baseline. */
+async function resetAllMyFlightData(){
+ if(!db || !cache)throw Error('Database is not ready');
+ const fresh=clone(window.MY_FLIGHT_SEED);
+ if(!fresh || !Array.isArray(fresh.flights) || !Array.isArray(fresh.history))throw Error('Clean app template unavailable');
+ await writeDB(fresh);
+ localStorage.removeItem('my-flight-company-baseline-v1:'+location.pathname.replace(/[^a-z0-9/_-]/gi,''));
+ cache=clone(fresh);
+ return true;
+}
 async function bootOffline(){await openDB();cache=await readDB();if(!cache){cache=clone(window.MY_FLIGHT_SEED);await writeDB(cache)}render(state());loadArchiveMonths();set('vacstaff',cache.profile.staff);vacation(true);if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('./sw.js').catch(()=>{})}
