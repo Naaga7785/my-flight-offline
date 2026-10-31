@@ -29,16 +29,35 @@ function dutyAllFlights(){const seen=new Set(),out=[];for(const f of [...(cache?
 function dutyEntries(){return Array.isArray(cache?.duties)?cache.duties:[]}
 function dutyFlightOptions(){
  const date=document.getElementById('dutyDate').value;
- const localStart=Date.parse(date+'T00:00:00Z')-7*3600000;
- const flights=dutyAllFlights().filter(f=>{const t=dutyDate(f.date,f.dep);return t>=localStart-86400000&&t<localStart+3*86400000}).sort((a,b)=>dutyDate(a.date,a.dep)-dutyDate(b.date,b.dep));
  const holder=document.getElementById('dutyFlights');
- holder.innerHTML=flights.length?flights.map((f,i)=>`<label class="duty-flight"><input type="checkbox" value="${i}" onchange="dutySelectionChanged()"> ${dutyEsc(f.date)} · ${dutyEsc(f.fr)} → ${dutyEsc(f.to)} · ${dutyEsc(f.dep)}–${dutyEsc(f.arr)} UTC</label>`).join(''):'<p class="hint">No nearby saved flights. You may calculate a planned duty, but cannot save it as an actual duty.</p>';
- window.dutyCandidateFlights=flights;dutyLoadReport();dutyHistory();
+ window.dutyCandidateFlights=[];
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)){holder.innerHTML='<p class="hint">Choose a duty date first.</p>';dutyHistory();return;}
+ const raw=document.getElementById('dutyReport').value.trim();
+ let reportMs=NaN;
+ try{if(raw)reportMs=dutyDate(date,dutyTime(raw))-7*3600000}catch(e){}
+ if(!Number.isFinite(reportMs)){
+  holder.innerHTML='<p class="hint">Enter the actual local reporting time to show eligible flights. Duty duration is not reporting time.</p>';
+  dutyHistory();return;
+ }
+ const flights=dutyAllFlights().filter(f=>{
+  try{
+   const depMs=dutyDate(f.date,dutyTime(f.dep));
+   // Report must precede departure. Overnight UTC flights are included only
+   // when they actually depart after the selected local duty report.
+   return depMs>=reportMs && depMs<reportMs+18*3600000;
+  }catch(e){return false}
+ }).sort((a,b)=>dutyDate(a.date,dutyTime(a.dep))-dutyDate(b.date,dutyTime(b.dep)));
+ window.dutyCandidateFlights=flights;
+ holder.innerHTML=flights.length?flights.map((f,i)=>{
+  const local=new Date(dutyDate(f.date,dutyTime(f.dep))+7*3600000).toISOString().slice(0,16).replace('T',' ');
+  return `<label class="duty-flight"><input type="checkbox" value="${i}" onchange="dutySelectionChanged()"><span>${dutyEsc(f.date)} · ${dutyEsc(f.fr)} → ${dutyEsc(f.to)} · ${dutyEsc(f.dep)}–${dutyEsc(f.arr)} UTC <small>(local departure ${local})</small></span></label>`;
+ }).join(''):'<p class="hint">No flights depart after this reporting time in the next 18 hours. Verify the local duty date and reporting time; older flights are excluded.</p>';
+ dutyHistory();
 }
-function dutySelectionChanged(){const chosen=[...document.querySelectorAll('#dutyFlights input:checked')].map(e=>window.dutyCandidateFlights[+e.value]);if(!chosen.length)return;document.getElementById('dutySectors').value=String(Math.min(10,chosen.length));const last=chosen.at(-1);document.getElementById('dutyFinal').value=last.arr;document.getElementById('dutyEndAirport').value=last.to;}
+function dutySelectionChanged(){const chosen=[...document.querySelectorAll('#dutyFlights input:checked')].map(e=>window.dutyCandidateFlights[+e.value]).filter(Boolean).sort((a,b)=>dutyDate(a.date,dutyTime(a.dep))-dutyDate(b.date,dutyTime(b.dep)));if(!chosen.length)return;document.getElementById('dutySectors').value=String(Math.min(10,chosen.length));const last=chosen.at(-1);document.getElementById('dutyFinal').value=last.arr;document.getElementById('dutyEndAirport').value=last.to;}
 function dutySaveReport(){try{const date=document.getElementById('logDutyDate').value;checkDate(date);const report=dutyTime(document.getElementById('logDutyReport').value);const airport=document.getElementById('logDutyAirport').value.trim().toUpperCase();if(!/^[A-Z]{3}$/.test(airport))throw Error('Invalid report airport');if(!cache.dutyReports)cache.dutyReports={};cache.dutyReports[date]={report,airport};writeDB(cache).then(()=>{show('Duty report saved.');document.getElementById('dutyDate').value=date;dutyFlightOptions();dutyLoadReport()}).catch(e=>show(e.message,true));}catch(e){show(e.message,true)}}
-function dutyLoadReport(){const date=document.getElementById('dutyDate').value;const r=cache?.dutyReports?.[date];if(r){document.getElementById('dutyReport').value=r.report;document.getElementById('dutyReportAirport').value=r.airport}}
-function dutyInit(){const d=document.getElementById('dutyDate');if(!d)return;d.value=new Date().toISOString().slice(0,10);document.getElementById("logDutyDate").value=d.value;dutyFlightOptions();dutyLoadReport();dutyHistory();}
+function dutyLoadReport(){const result=document.getElementById('dutyResult');if(result)result.innerHTML='<p class="hint">Duty date changed. Enter the reporting time and calculate for this date.</p>';const date=document.getElementById('dutyDate').value;const r=cache?.dutyReports?.[date];document.getElementById('dutyReport').value=r?.report||'';document.getElementById('dutyReportAirport').value=r?.airport||'SGN';document.getElementById('dutyFinal').value='';document.getElementById('dutySectors').value='1';}
+function dutyInit(){const d=document.getElementById('dutyDate');if(!d)return;d.value=new Date(Date.now()+7*3600000).toISOString().slice(0,10);document.getElementById('logDutyDate').value=d.value;dutyLoadReport();dutyFlightOptions();dutyHistory();}
 function dutyCalculate(save=false){try{
  const date=document.getElementById('dutyDate').value;checkDate(date);
  const report=dutyTime(document.getElementById('dutyReport').value);document.getElementById('dutyReport').value=report;
@@ -47,7 +66,7 @@ function dutyCalculate(save=false){try{
  const base=document.getElementById('dutyBase').value.toUpperCase().trim();const end=document.getElementById('dutyEndAirport').value.toUpperCase().trim();
  if(!/^[A-Z]{3}$/.test(base)||!/^[A-Z]{3}$/.test(end))throw Error('Use three-letter airport codes');
  const reportMs=dutyDate(date,report)-7*3600000; // local report at Vietnam UTC+7
- let finalMs=final?dutyDate(date,final)-7*3600000:NaN;const chosen=[...document.querySelectorAll('#dutyFlights input:checked')].map(e=>window.dutyCandidateFlights[+e.value]);
+ let finalMs=final?dutyDate(date,final):NaN;const chosen=[...document.querySelectorAll('#dutyFlights input:checked')].map(e=>window.dutyCandidateFlights[+e.value]);
  const last=chosen.at(-1);if(last){finalMs=dutyDate(last.date,last.arr)+Number(last.extra||0)*86400000;if(finalMs<dutyDate(last.date,last.dep))finalMs+=86400000;}
  else {if(!final)throw Error('Enter final chocks-on or select saved flights');while(finalMs<reportMs)finalMs+=86400000;}
  const finishMs=finalMs+15*60000;const actual=Math.round((finishMs-reportMs)/60000);
@@ -60,13 +79,21 @@ function dutyCalculate(save=false){try{
  document.getElementById('dutyResult').innerHTML=html;
  if(save){if(!chosen.length)throw Error('To save an actual duty, link at least one saved flight. Planning calculations are not saved as actual duty.');if(dutyEntries().some(d=>d.flightKeys?.some(k=>chosen.some(f=>k===[f.date,f.fr,f.to,f.dep,f.arr].join('|')))))throw Error('One or more flights are already linked to a saved duty. Delete or edit that duty first.');const entry={id:Date.now()+'-'+Math.random().toString(36).slice(2,7),date,report,accl,reportAirport:document.getElementById('dutyReportAirport').value.toUpperCase().trim()||base,base,end,sectors,reportMs,finalMs,finishMs,actual,travel,flightKeys:chosen.map(f=>[f.date,f.fr,f.to,f.dep,f.arr].join('|'))};if(!Array.isArray(cache.duties))cache.duties=[];cache.duties.push(entry);writeDB(cache).then(()=>{show('Duty saved in offline backup data.');dutyHistory()}).catch(e=>show('Duty save failed: '+e.message,true));}
  }catch(e){show(e.message,true)}}
-function dutyHistory(){const h=document.getElementById('dutyHistory');if(!h)return;const duties=dutyEntries().slice().sort((a,b)=>b.reportMs-a.reportMs);h.innerHTML=duties.length?duties.map(d=>`<div class="duty-history-row"><span>${dutyEsc(d.date)} · ${dutyEsc(d.reportAirport)} → ${dutyEsc(d.end)} · ${dutyHM(d.actual)} duty</span><button class="alt" onclick="dutyRemove('${dutyEsc(d.id)}')">Delete</button></div>`).join(''):'<p class="hint">No saved duty periods yet. Older flights without report times cannot be counted as complete duty records.</p>';
+// Support legacy saved records whose reportMs was absent or stored as text.
+function dutyRecordStart(d){
+ const direct=Number(d.reportMs);
+ if(d.reportMs!=null&&d.reportMs!==''&&Number.isFinite(direct)&&direct>946684800000)return direct;
+ try{if(d.date&&d.report)return dutyDate(d.date,dutyTime(d.report))-7*3600000;
+ if(d.date)return Date.parse(d.date+'T00:00:00Z')-7*3600000;}catch(e){}
+ return NaN;
+}
+function dutyHistory(){const h=document.getElementById('dutyHistory');if(!h)return;const duties=dutyEntries().slice().sort((a,b)=>dutyRecordStart(b)-dutyRecordStart(a));h.innerHTML=duties.length?duties.map(d=>`<div class="duty-history-row"><span>${dutyEsc(d.date)} · ${dutyEsc(d.reportAirport)} → ${dutyEsc(d.end)} · ${dutyHM(d.actual)} duty</span><button class="alt" onclick="dutyRemove('${dutyEsc(d.id)}')">Delete</button></div>`).join(''):'<p class="hint">No saved duty periods yet. Older flights without report times cannot be counted as complete duty records.</p>';
  const selectedDate=document.getElementById('dutyDate')?.value;
  const referenceDate=/^\d{4}-\d{2}-\d{2}$/.test(selectedDate||'')?selectedDate:new Date().toISOString().slice(0,10);
  // The selected local calendar day is inclusive; periods end at the following local midnight.
  const endMs=Date.parse(referenceDate+'T00:00:00Z')-7*3600000+86400000;
  const startMs=days=>endMs-days*86400000;
- const sum=days=>duties.filter(d=>Number.isFinite(+d.reportMs)&&+d.reportMs<endMs&&+d.reportMs>=startMs(days)).reduce((total,d)=>total+(+d.actual||0),0);
+ const sum=days=>duties.filter(d=>{const t=dutyRecordStart(d);return Number.isFinite(t)&&t<endMs&&t>=startMs(days)}).reduce((total,d)=>total+(Number(d.actual)||0),0);
  const flightMin=days=>dutyAllFlights().filter(f=>{const t=dutyDate(f.date,f.dep);return t<endMs&&t>=startMs(days)}).reduce((total,f)=>{try{let v=dutyMinute(dutyTime(f.arr))-dutyMinute(dutyTime(f.dep))+(+f.extra||0)*1440;if(v<0)v+=1440;return total+v}catch{return total}},0);
  document.getElementById('dutyTotals').innerHTML=`<p class="hint"><b>As of ${dutyEsc(referenceDate)} (Vietnam local date)</b></p><div class="duty-results-grid"><div class="metric"><span>7-DAY RECORDED DUTY</span><strong>${dutyHM(sum(7))} / 60:00</strong></div><div class="metric"><span>14-DAY RECORDED DUTY</span><strong>${dutyHM(sum(14))} / 110:00</strong></div><div class="metric"><span>28-DAY RECORDED DUTY</span><strong>${dutyHM(sum(28))} / 190:00</strong></div><div class="metric"><span>28-DAY RECORDED FLIGHT</span><strong>${dutyHM(flightMin(28))} / 100:00</strong></div><div class="metric"><span>12 CALENDAR MONTH FLIGHT (RECORDED)</span><strong>${dutyHM(dutyCalendarFlight(referenceDate))} / 1000:00</strong></div></div><p class="hint">Recorded totals only, not certified remaining allowances. Missing duty periods, positioning, standby, simulator and archived time data can make totals incomplete. 12 consecutive calendar months use the selected calendar month and preceding 11 calendar months; partial records can understate totals.</p>`;
 }
